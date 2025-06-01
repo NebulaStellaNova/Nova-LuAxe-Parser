@@ -1,6 +1,20 @@
 function create()
-    sprite = makeFunkinSprite().loadGraphic(Paths.image("icons/icon-bf"))
-    sprite.screenCenter()
-    sprite.scrollFactor.set(0, 1)
-    add(sprite)
+    leftWatermarkText.text += "\nNova LuAxe Runner v0.1"
+    leftWatermarkText.y -= 15
+end
+
+function sort(a, b)
+    if a.length < b.length then
+        return -1
+    end
+    if a.length > b.length then
+        return 1
+    end
+    return 0
+end
+
+function update()
+    array = leftWatermarkText.text.split("\n")
+    array.sort(sort)
+    leftWatermarkText.text = array.join("\n")
 end

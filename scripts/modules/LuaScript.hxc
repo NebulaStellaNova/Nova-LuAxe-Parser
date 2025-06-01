@@ -135,6 +135,20 @@ class LuaScript extends Module {
                     isString = !isString;
                 }
                 if (!isString) {
+                    for (offset in 0...10) {
+                        if (
+                            lineSplit[index + 0+offset] == "t" &&
+                            lineSplit[index + 1+offset] == "h" &&
+                            lineSplit[index + 2+offset] == "e" &&
+                            lineSplit[index + 3+offset] == "n"
+                        ) {
+                            lineSplit[index+offset] = ")";
+                            lineSplit[index + 1+offset] = "{";
+                            lineSplit[index + 2+offset] = "";
+                            lineSplit[index + 3+offset] = "";
+                        }
+                    }
+
                     if (
                         lineSplit[index] == "-" &&
                         lineSplit[index + 1] == "-"
@@ -213,6 +227,8 @@ class LuaScript extends Module {
                         lineSplit[index + 3] = "";
                         lineSplit[index + 4] = "";
                     }
+                    
+                    
                 }
             }
             line = lineSplit.join("");
