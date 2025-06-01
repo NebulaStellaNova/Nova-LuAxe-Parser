@@ -1,0 +1,6 @@
+function create()
+    sprite = makeFunkinSprite().loadGraphic(Paths.image("icons/icon-bf"))
+    sprite.screenCenter()
+    sprite.scrollFactor.set(0, 1)
+    add(sprite)
+end

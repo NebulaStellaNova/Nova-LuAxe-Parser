@@ -1,0 +1,250 @@
+import StringTools;
+import flixel.FlxG;
+import funkin.play.PlayState;
+import funkin.util.ReflectUtil;
+import funkin.modding.module.Module;
+import funkin.ui.mainmenu.MainMenuState;
+import haxe.Json;
+
+import funkin.graphics.FunkinSprite;
+
+import funkin.PlayerSettings;
+
+import haxe.Unserializer;
+
+import openfl.net.URLLoader;
+import openfl.net.URLRequest;
+
+import funkin.input.Controls;
+//import sys.net.Host;
+import funkin.modding.base.ScriptedMusicBeatState;
+
+import hscript.Parser;
+import hscript.Interp;
+
+//import sys.net.Socket;
+
+//import sys.ssl.Socket;
+
+import funkin.util.FileUtil;
+
+import haxe.Log;
+
+import funkin.util.macro.CompiledClassList;
+
+class LuaScript extends Module {
+    public var raw:String = ""; // raw script string
+    public var fileName:String;
+
+    private var hscriptInterp = new Interp();
+
+    private var canUpdate = false;
+    
+    public function new() {
+        super('LuaScript');
+        initVars();
+    }
+    
+    private function new_FunkinSprite(x = 0, y = 0) {
+        return new FunkinSprite(x, y);
+    }
+
+    private function importClass(path) {
+        trace("Imports do not work in LuAxe. See \"Imports.hxc\" if you want to add auto imports.");
+        //trace(CompiledClassList.get("FlxG"));
+    }
+
+    public function initVars() {
+        // -- Variables -- \\
+
+        //    -- New --    \\
+
+        //  -- Classes --  \\
+
+        //  -- Methods --  \\
+        hscriptInterp.variables.set("add", FlxG.state.add);
+        hscriptInterp.variables.set("import", importClass);
+        hscriptInterp.variables.set("print", (what)->{
+            Log.trace(fileName + ":" + what);
+        });
+
+
+        var autoImports = new LuaImports().getImports();
+
+        for (i in autoImports.keys()) {
+            //trace(i);
+            set(i, autoImports.get(i));
+        }
+    }
+    
+    public function fromPath(path) {
+        raw = FileUtil.readStringFromPath(path);
+        var splitPath = path.split("/");
+        fileName = splitPath[splitPath.length-1];
+        //call("onCreate");
+        //call("create");
+        canUpdate = true;
+    }
+
+    function onUpdate(event) {
+        super.onUpdate(event);
+        //call("onUpdate");
+        //call("update");
+    }
+
+    public function call(name, params) {
+        if (!StringTools.contains(raw, "function " + name)) return;
+        var rawLines = raw.split('\n');
+        rawLines.push("");
+        var isTheFunction = false;
+        var finalString = "";
+        var lineNumber = 1;
+        var funcCount = 0;
+        for (line in rawLines) {
+            var keys = ["function", "if", "else", "while", "for"];
+            var breakKeys = ["do", "then"];
+            var endKeys = ["end"];
+
+            //trace(StringTools.trim(line));
+            for (i in keys) {
+                if (StringTools.startsWith(StringTools.trim(line), i)) {
+                    var lineSplit = line.split(" ");
+                    for (i in lineSplit) {
+                        var index = lineSplit.indexOf(i);
+                        var secSplit = StringTools.trim(i).split('');
+                        var theEnd = secSplit[secSplit.length-1]; 
+                        if (theEnd == ")") {
+                            lineSplit[index] = StringTools.trim(i) + " {";
+                        }
+
+                        if (StringTools.trim(i) == "if" || StringTools.trim(i) == "for" || StringTools.trim(i) == "while") {
+                            lineSplit[index] = StringTools.trim(i) + " (";
+                        }
+                    }
+                    line = lineSplit.join(" ");
+                }
+            }
+            for (i in breakKeys) {
+                //line = StringTools.replace(StringTools.trim(line), i, ") {");
+            }
+            var isString = false;
+            var lineSplit = StringTools.trim(line).split("");
+            for (i in lineSplit) {
+                var index = lineSplit.indexOf(i);
+                if (i == "\"" || i == "'") {
+                    isString = !isString;
+                }
+                if (!isString) {
+                    if (
+                        lineSplit[index] == "-" &&
+                        lineSplit[index + 1] == "-"
+                    ) {
+                        lineSplit[index] = "/";
+                        lineSplit[index + 1] = "/";
+                    }
+
+                    if (
+                        lineSplit[index] == "m" &&
+                        lineSplit[index + 1] == "a" &&
+                        lineSplit[index + 2] == "k" &&
+                        lineSplit[index + 3] == "e"
+                    ) {
+                        lineSplit[index] = "n";
+                        lineSplit[index + 1] = "e";
+                        lineSplit[index + 2] = "w";
+                        lineSplit[index + 3] = " ";
+                    }
+
+                    if (
+                        lineSplit[index] == "e" &&
+                        lineSplit[index + 1] == "n" &&
+                        lineSplit[index + 2] == "d"
+                    ) {
+                        lineSplit[index] = "}";
+                        lineSplit[index + 1] = "";
+                        lineSplit[index + 2] = "";
+                    }
+
+                    if (
+                        lineSplit[index + 0] == "l" &&
+                        lineSplit[index + 1] == "o" &&
+                        lineSplit[index + 2] == "c" &&
+                        lineSplit[index + 3] == "a" &&
+                        lineSplit[index + 4] == "l"
+                    ) {
+                        lineSplit[index] = "v";
+                        lineSplit[index + 1] = "a";
+                        lineSplit[index + 2] = "r";
+                        lineSplit[index + 3] = "";
+                        lineSplit[index + 4] = "";
+                    }
+
+                    if (
+                        lineSplit[index] == "e" &&
+                        lineSplit[index + 1] == "l" &&
+                        lineSplit[index + 2] == "s" &&
+                        lineSplit[index + 3] == "e"
+                    ) {
+                        lineSplit[index] = "} ";
+                        lineSplit[index + 1] = "e";
+                        lineSplit[index + 2] = "l";
+                        lineSplit[index + 3] = "s";
+                        lineSplit[index + 3] = "e {";
+                    }
+
+                    if (
+                        lineSplit[index] == "d" &&
+                        lineSplit[index + 1] == "o"
+                    ) {
+                        lineSplit[index] = ")";
+                        lineSplit[index + 1] = " {";
+                    }
+
+                    if (
+                        lineSplit[index + 0] == "w" &&
+                        lineSplit[index + 1] == "h" &&
+                        lineSplit[index + 2] == "i" &&
+                        lineSplit[index + 3] == "l" &&
+                        lineSplit[index + 4] == "e"
+                    ) {
+                        lineSplit[index] = ")";
+                        lineSplit[index + 1] = " ";
+                        lineSplit[index + 2] = "{";
+                        lineSplit[index + 3] = "";
+                        lineSplit[index + 4] = "";
+                    }
+                }
+            }
+            line = lineSplit.join("");
+            /* line = StringTools.replace(StringTools.trim(line), "end", "}");
+            line = StringTools.replace(StringTools.trim(line), "else", "} else {");
+            line = StringTools.replace(StringTools.trim(line), "local", "var"); */
+            line = StringTools.replace(StringTools.trim(line), "print(", "print(\"" + lineNumber + ": \" + ");
+            line = StringTools.replace(StringTools.trim(line), "print (", "print (\"" + lineNumber + ": \" + ");
+
+            if (!StringTools.endsWith(StringTools.trim(line), "}") && StringTools.trim(line) != "" && !StringTools.endsWith(StringTools.trim(line), "{") && !StringTools.endsWith(StringTools.trim(line), ";")) {
+                line = StringTools.trim(line) + ";";
+            }
+
+            finalString += line+"\n";
+            lineNumber++;
+        }
+        //trace(finalString);
+
+        params = params != null ? params : [];
+        var daCall = "\n" + name + "(";
+        daCall += params.join(", ");
+        daCall += ");";
+        finalString += daCall;
+        
+        hscriptInterp.execute(new Parser().parseString(finalString));
+    }
+
+    public function set(name, value) {
+        hscriptInterp.variables.set(name, value);
+    }
+    public function destroy() {
+        call("destroy");
+        call("onDestory");
+    }
+}
